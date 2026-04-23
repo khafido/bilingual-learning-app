@@ -5,7 +5,9 @@ export interface CacheEntry {
   sourceLanguage: string;
   targetLanguage: string;
   originalLyrics: string[];
+  originalLyricsFormatted: string;
   userTranslations: string[];
+  userTranslationsFormatted: string;
   scoringResult: any;
   timestamp: number;
   date: string;

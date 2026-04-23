@@ -22,6 +22,9 @@ export class CacheService {
 
   static saveCache(cache: Map<string, CacheEntry>): void {
     const cacheObject = Object.fromEntries(cache);
+
+    console.log({ cacheObject });
+    
     localStorage.setItem(this.CACHE_KEY, JSON.stringify(cacheObject));
   }
 
@@ -95,6 +98,25 @@ export class CacheService {
     return true;
   }
 
+  static formatTranslationsWithLineBreaks(translations: string[], originalLyricsFormatted: string): string {
+    // Preserve the same line break structure as original lyrics
+    const originalLines = originalLyricsFormatted.split('\n');
+    let translationIndex = 0;
+    const formattedTranslations: string[] = [];
+
+    for (const originalLine of originalLines) {
+      if (originalLine.trim() === '') {
+        // Preserve empty lines (double newlines)
+        formattedTranslations.push('');
+      } else if (translationIndex < translations.length) {
+        formattedTranslations.push(translations[translationIndex]);
+        translationIndex++;
+      }
+    }
+
+    return formattedTranslations.join('\n');
+  }
+
   static deleteCacheEntry(key: CacheKey): boolean {
     const cache = this.getCache();
     const cacheKey = this.generateCacheKey(key);
@@ -102,10 +124,28 @@ export class CacheService {
     if (cache.has(cacheKey)) {
       cache.delete(cacheKey);
       this.saveCache(cache);
+      
+      // Also remove from history
+      this.deleteFromHistory(cacheKey);
+      
       return true;
     }
     
     return false;
+  }
+
+  static deleteFromHistory(cacheKey: string): void {
+    const history = this.getTranslationHistory();
+    history.entries = history.entries.filter(entry => {
+      const entryCacheKey = this.generateCacheKey({
+        artist: entry.artist,
+        title: entry.title,
+        sourceLanguage: entry.sourceLanguage,
+        targetLanguage: entry.targetLanguage
+      });
+      return entryCacheKey !== cacheKey;
+    });
+    this.saveTranslationHistory(history);
   }
 
   static clearCache(): void {

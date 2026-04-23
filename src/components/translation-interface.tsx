@@ -57,8 +57,6 @@ export function TranslationInterface() {
   const [manualLyricsText, setManualLyricsText] = useState<string>("")
   const [showHistory, setShowHistory] = useState(false)
 
-  console.log({ originalLyrics });
-
   const searchForm = useForm<SearchFormData>({
     resolver: zodResolver(searchSchema),
     defaultValues: {
@@ -92,8 +90,7 @@ export function TranslationInterface() {
       // Save successful search to localStorage
       localStorageSet("lastArtist", data.artist)
       localStorageSet("lastSong", data.song)
-      
-      console.log(fetchedLyrics)
+
       setLyrics(fetchedLyrics.lyrics)
       setOriginalLyrics(fetchedLyrics.originalLyrics)
       setManualLyricsText(fetchedLyrics.originalLyrics)
@@ -177,6 +174,8 @@ export function TranslationInterface() {
         // Use cached result if translations are the same
         const cachedEntry = CacheService.getCachedTranslation(cacheKey)
         if (cachedEntry) {
+          console.log({ cachedEntry });
+          
           result = cachedEntry.scoringResult
         } else {
           // Fallback to API if cache somehow doesn't exist
@@ -200,14 +199,17 @@ export function TranslationInterface() {
           userTranslations: data.translations.join("\n"),
         })
         
-        // Cache the new translation
+        // Cache the new translation with formatted versions
+        const userTranslationsFormatted = CacheService.formatTranslationsWithLineBreaks(data.translations, originalLyrics)
         CacheService.cacheTranslation({
           artist,
           title,
           sourceLanguage,
           targetLanguage,
           originalLyrics: lyrics,
+          originalLyricsFormatted: originalLyrics,
           userTranslations: data.translations,
+          userTranslationsFormatted: userTranslationsFormatted,
           scoringResult: result
         })
       }
@@ -249,7 +251,7 @@ export function TranslationInterface() {
     
     // Restore translation data
     setLyrics(saved.originalLyrics)
-    setOriginalLyrics(saved.originalLyrics.join('\n'))
+    setOriginalLyrics(saved.originalLyricsFormatted)
     setTranslations(saved.userTranslations)
     setScoringResult(saved.scoringResult)
     setStep("results")
@@ -545,7 +547,8 @@ export function TranslationInterface() {
               <div>
                 <h4 className="font-medium mb-2">Alternative Translations:</h4>
                 <div className="bg-gray-50 p-3 rounded text-sm whitespace-pre-line">
-                  {scoringResult.better_translation}
+                  {(() => { console.log('holaaa', scoringResult.better_translation, originalLyrics); return null; })()}
+                  {ScoringService.formatAlternativeTranslation(scoringResult.better_translation, originalLyrics)}
                 </div>
               </div>
             )}
