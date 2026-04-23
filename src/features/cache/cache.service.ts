@@ -22,8 +22,6 @@ export class CacheService {
 
   static saveCache(cache: Map<string, CacheEntry>): void {
     const cacheObject = Object.fromEntries(cache);
-
-    console.log({ cacheObject });
     
     localStorage.setItem(this.CACHE_KEY, JSON.stringify(cacheObject));
   }

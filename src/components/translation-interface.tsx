@@ -174,8 +174,6 @@ export function TranslationInterface() {
         // Use cached result if translations are the same
         const cachedEntry = CacheService.getCachedTranslation(cacheKey)
         if (cachedEntry) {
-          console.log({ cachedEntry });
-          
           result = cachedEntry.scoringResult
         } else {
           // Fallback to API if cache somehow doesn't exist
@@ -553,7 +551,6 @@ export function TranslationInterface() {
               <div>
                 <h4 className="font-medium mb-2">Alternative Translations:</h4>
                 <div className="bg-gray-50 p-3 rounded text-sm whitespace-pre-line">
-                  {(() => { console.log('holaaa', scoringResult.better_translation, originalLyrics); return null; })()}
                   {ScoringService.formatAlternativeTranslation(scoringResult.better_translation, originalLyrics)}
                 </div>
               </div>
