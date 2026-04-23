@@ -1,5 +1,6 @@
 import { GoogleGenAI, Type } from "@google/genai"
 import { TranslationInput, ScoringResult, ScoringError } from "./scoring.types"
+import { getScoringConfig, formatScoringDescription } from "./scoring.config"
 
 export class GeminiProvider {
   private static genAI: GoogleGenAI | null = null
@@ -48,6 +49,9 @@ export class GeminiProvider {
   }
 
   private static buildPrompt(input: TranslationInput): string {
+    const config = getScoringConfig()
+    const criteriaDescription = formatScoringDescription(config)
+    
     return `
  AI-powered language learning platform using lyrics-based translation exercises with semantic scoring and progress analytics. You are an expert bilingual tutor specializing in translation evaluation. Always respond with valid JSON only. 
 
@@ -56,11 +60,13 @@ Evaluate this translation from ${input.sourceLanguage} to ${input.targetLanguage
 Original: "${input.originalLyrics}"
 Translation: "${input.userTranslations}"
 
+Scoring Criteria: ${criteriaDescription}
+
 Determine:
 - Meaning accuracy (0-100)
 - Grammar correctness (0-100) 
 - Naturalness/fluency (0-100)
-- Overall score (40% accuracy, 40% grammar, 20% naturalness)
+- Overall score (${config.weights.accuracy}% accuracy, ${config.weights.grammar}% grammar, ${config.weights.naturalness}% naturalness)
 - Specific mistakes
 - Better alternative translation
 - Encouraging feedback

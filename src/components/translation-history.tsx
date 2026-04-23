@@ -168,57 +168,96 @@ export function TranslationHistory({ onRestore }: TranslationHistoryProps) {
 
               {expandedEntry === entry.id && (
                 <div className="mt-4 pt-4 border-t">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <h5 className="font-medium mb-2">Original Lyrics Preview:</h5>
-                      <div className="bg-gray-50 p-2 rounded text-sm max-h-32 overflow-y-auto">
-                        {entry.originalLyrics.slice(0, 3).map((line, index) => (
-                          <div key={index} className="text-gray-700">
-                            {index + 1}. {line}
+                  {entry.scoringResult ? (
+                    <div className="space-y-4">
+                      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4">
+                        <h5 className="font-semibold text-lg mb-3 flex items-center gap-2">
+                          <span className="text-2xl">📊</span>
+                          Evaluation Results
+                        </h5>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="bg-white rounded-lg p-3 shadow-sm">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="font-medium text-gray-700">Overall Score</span>
+                              <span className={`text-lg font-bold ${
+                                entry.scoringResult.overall_score >= 80 ? 'text-green-600' :
+                                entry.scoringResult.overall_score >= 60 ? 'text-yellow-600' :
+                                'text-red-600'
+                              }`}>
+                                {entry.scoringResult.overall_score}%
+                              </span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-2">
+                              <div 
+                                className={`h-2 rounded-full transition-all duration-300 ${
+                                  entry.scoringResult.overall_score >= 80 ? 'bg-green-500' :
+                                  entry.scoringResult.overall_score >= 60 ? 'bg-yellow-500' :
+                                  'bg-red-500'
+                                }`}
+                                style={{ width: `${entry.scoringResult.overall_score}%` }}
+                              />
+                            </div>
                           </div>
-                        ))}
-                        {entry.originalLyrics.length > 3 && (
-                          <div className="text-gray-500 italic">
-                            ... and {entry.originalLyrics.length - 3} more lines
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <h5 className="font-medium mb-2">Your Translation Preview:</h5>
-                      <div className="bg-gray-50 p-2 rounded text-sm max-h-32 overflow-y-auto">
-                        {entry.userTranslations.slice(0, 3).map((line, index) => (
-                          <div key={index} className="text-gray-700">
-                            {index + 1}. {line}
-                          </div>
-                        ))}
-                        {entry.userTranslations.length > 3 && (
-                          <div className="text-gray-500 italic">
-                            ... and {entry.userTranslations.length - 3} more lines
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
 
-                  {entry.scoringResult && (
-                    <div className="mt-4">
-                      <h5 className="font-medium mb-2">Evaluation Results:</h5>
-                      <div className="grid grid-cols-3 gap-2 text-sm">
-                        <div className="text-center">
-                          <div className="font-medium">Accuracy</div>
-                          <div className="text-gray-600">{entry.scoringResult.accuracy_score}%</div>
+                          <div className="bg-white rounded-lg p-3 shadow-sm">
+                            <div className="text-sm text-gray-600 mb-1">Performance Level</div>
+                            <div className={`text-lg font-semibold ${
+                              entry.scoringResult.overall_score >= 80 ? 'text-green-600' :
+                              entry.scoringResult.overall_score >= 60 ? 'text-yellow-600' :
+                              'text-red-600'
+                            }`}>
+                              {entry.scoringResult.overall_score >= 80 ? 'Excellent 🌟' :
+                               entry.scoringResult.overall_score >= 60 ? 'Good 👍' :
+                               'Needs Improvement 📚'}
+                            </div>
+                          </div>
                         </div>
-                        <div className="text-center">
-                          <div className="font-medium">Grammar</div>
-                          <div className="text-gray-600">{entry.scoringResult.grammar_score}%</div>
-                        </div>
-                        <div className="text-center">
-                          <div className="font-medium">Naturalness</div>
-                          <div className="text-gray-600">{entry.scoringResult.naturalness_score}%</div>
+
+                        <div className="grid grid-cols-3 gap-3 mt-4">
+                          <div className="bg-white rounded-lg p-3 text-center shadow-sm">
+                            <div className="text-2xl mb-1">🎯</div>
+                            <div className="font-medium text-gray-700">Accuracy</div>
+                            <div className="text-xl font-bold text-blue-600">{entry.scoringResult.accuracy_score}%</div>
+                            <div className="w-full bg-gray-200 rounded-full h-1.5 mt-2">
+                              <div 
+                                className="bg-blue-500 h-1.5 rounded-full transition-all duration-300"
+                                style={{ width: `${entry.scoringResult.accuracy_score}%` }}
+                              />
+                            </div>
+                          </div>
+                          
+                          <div className="bg-white rounded-lg p-3 text-center shadow-sm">
+                            <div className="text-2xl mb-1">📝</div>
+                            <div className="font-medium text-gray-700">Grammar</div>
+                            <div className="text-xl font-bold text-green-600">{entry.scoringResult.grammar_score}%</div>
+                            <div className="w-full bg-gray-200 rounded-full h-1.5 mt-2">
+                              <div 
+                                className="bg-green-500 h-1.5 rounded-full transition-all duration-300"
+                                style={{ width: `${entry.scoringResult.grammar_score}%` }}
+                              />
+                            </div>
+                          </div>
+                          
+                          <div className="bg-white rounded-lg p-3 text-center shadow-sm">
+                            <div className="text-2xl mb-1">💬</div>
+                            <div className="font-medium text-gray-700">Naturalness</div>
+                            <div className="text-xl font-bold text-purple-600">{entry.scoringResult.naturalness_score}%</div>
+                            <div className="w-full bg-gray-200 rounded-full h-1.5 mt-2">
+                              <div 
+                                className="bg-purple-500 h-1.5 rounded-full transition-all duration-300"
+                                style={{ width: `${entry.scoringResult.naturalness_score}%` }}
+                              />
+                            </div>
+                          </div>
                         </div>
                       </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      <div className="text-4xl mb-2">📝</div>
+                      <div className="font-medium">No Evaluation Available</div>
+                      <div className="text-sm mt-1">This translation hasn't been scored yet</div>
                     </div>
                   )}
                 </div>

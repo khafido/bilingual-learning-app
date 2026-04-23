@@ -15,6 +15,7 @@ import { LyricsService } from "@/features/lyrics/lyrics.service"
 import { LyricsMapper } from "@/features/lyrics/lyrics.mapper"
 import { ScoringService } from "@/features/scoring/scoring.service"
 import { TranslationInput, ScoringResult } from "@/features/scoring/scoring.types"
+import { getScoringConfig, formatScoringDescription } from "@/features/scoring/scoring.config"
 import { CacheService } from "@/features/cache/cache.service"
 import { CacheEntry } from "@/features/cache/cache.types"
 import { TranslationHistory } from "@/components/translation-history"
@@ -60,8 +61,8 @@ export function TranslationInterface() {
   const searchForm = useForm<SearchFormData>({
     resolver: zodResolver(searchSchema),
     defaultValues: {
-      artist: localStorageGet("lastArtist", ""),
-      song: localStorageGet("lastSong", ""),
+      artist: "",
+      song: "",
       sourceLanguage: localStorageGet("sourceLanguage", "en"),
       targetLanguage: localStorageGet("targetLanguage", "id"),
     },
@@ -71,8 +72,6 @@ export function TranslationInterface() {
 
   useEffect(() => {
     const values = searchForm.getValues()
-    localStorageSet("artist", values.artist)
-    localStorageSet("song", values.song)
     localStorageSet("sourceLanguage", values.sourceLanguage)
     localStorageSet("targetLanguage", values.targetLanguage)
   }, [searchForm.watch("artist"), searchForm.watch("song"), searchForm.watch("sourceLanguage"), searchForm.watch("targetLanguage")])
@@ -86,10 +85,6 @@ export function TranslationInterface() {
         artist: data.artist,
         song: data.song,
       })
-      
-      // Save successful search to localStorage
-      localStorageSet("lastArtist", data.artist)
-      localStorageSet("lastSong", data.song)
 
       setLyrics(fetchedLyrics.lyrics)
       setOriginalLyrics(fetchedLyrics.originalLyrics)
@@ -131,11 +126,7 @@ export function TranslationInterface() {
       
       const processedLyrics = LyricsService.processManualLyrics(manualLyricsText)
       const originalFormatted = LyricsMapper.preserveOriginalFormatting(manualLyricsText)
-      
-      // Save successful manual entry
-      localStorageSet("lastArtist", formValues.artist)
-      localStorageSet("lastSong", formValues.song)
-      
+
       setLyrics(processedLyrics)
       setOriginalLyrics(originalFormatted)
       setTranslations(new Array(processedLyrics.length).fill(""))
@@ -261,8 +252,6 @@ export function TranslationInterface() {
     setStep("results")
     
     // Save to localStorage
-    localStorageSet("lastArtist", saved.artist)
-    localStorageSet("lastSong", saved.title)
     localStorageSet("sourceLanguage", saved.sourceLanguage)
     localStorageSet("targetLanguage", saved.targetLanguage)
   }
@@ -480,6 +469,8 @@ export function TranslationInterface() {
   }
 
   if (step === "results" && scoringResult) {
+    const scoringConfig = getScoringConfig()
+    
     return (
       <div className="max-w-2xl mx-auto space-y-6">
         <Card>
@@ -524,7 +515,16 @@ export function TranslationInterface() {
                 </div>
               </div>
             </div>
-
+            {/* Scoring Criteria Note */}
+            <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-1">
+              <div className="flex items-start gap-2">
+                <span className="text-amber-600 mt-0.5">ℹ️</span>
+                <div className="text-sm">
+                  <div className="font-medium text-amber-900 mb-1">Scoring Criteria</div>
+                  <div className="text-amber-800">{formatScoringDescription(scoringConfig)}</div>
+                </div>
+              </div>
+            </div>
             {scoringResult.mistakes.length > 0 && (
               <div>
                 <h4 className="font-medium mb-2">Mistakes Found:</h4>
