@@ -253,6 +253,12 @@ export function TranslationInterface() {
     setLyrics(saved.originalLyrics)
     setOriginalLyrics(saved.originalLyricsFormatted)
     setTranslations(saved.userTranslations)
+    
+    // Update translation form values
+    saved.userTranslations.forEach((translation, index) => {
+      translationForm.setValue(`translations.${index}`, translation)
+    })
+    
     setScoringResult(saved.scoringResult)
     setStep("results")
     
