@@ -29,10 +29,10 @@ export class LyricsMapper {
   }
 
   static preserveOriginalFormatting(text: string): string {
-    // Preserve original formatting including double line breaks
+    // Preserve original formatting including double line breaks and blank lines
     return text
       .split(/\r?\n/)
-      .map(line => line.trimEnd())  // Only trim trailing whitespace
+      .map(line => line.trimEnd())  // Only trim trailing whitespace, preserve blank lines
       .join('\n')
   }
 }

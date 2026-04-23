@@ -1,11 +1,20 @@
 export interface TranslationInput {
   sourceLanguage: string
   targetLanguage: string
-  originalLyric: string
-  userTranslation: string
+  originalLyrics: string
+  userTranslations: string
+  artist?: string
+  title?: string
+}
+
+export interface CacheKey {
+  artist?: string
+  title?: string
 }
 
 export interface ScoringResult {
+  artist?: string,
+  title?: string,
   accuracy_score: number
   grammar_score: number
   naturalness_score: number

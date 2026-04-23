@@ -23,8 +23,14 @@ export class GeminiProvider {
       const genAI = this.initializeAI()
       const prompt = this.buildPrompt(input)
       
+      const model = process.env.NEXT_PUBLIC_GEMINI_MODEL;
+
+      if (!model) {
+        throw new Error("Gemini model is not configured")
+      }
+      
       const result = await genAI.models.generateContent({
-        model: "gemma-3-27b-it",
+        model: model,
         contents: prompt,
       })
       
@@ -47,14 +53,14 @@ export class GeminiProvider {
 
 Evaluate this translation from ${input.sourceLanguage} to ${input.targetLanguage}:
 
-Original: "${input.originalLyric}"
-Translation: "${input.userTranslation}"
+Original: "${input.originalLyrics}"
+Translation: "${input.userTranslations}"
 
 Determine:
 - Meaning accuracy (0-100)
 - Grammar correctness (0-100) 
 - Naturalness/fluency (0-100)
-- Overall score (60% accuracy, 20% grammar, 20% naturalness)
+- Overall score (40% accuracy, 40% grammar, 20% naturalness)
 - Specific mistakes
 - Better alternative translation
 - Encouraging feedback

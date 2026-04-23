@@ -3,7 +3,7 @@ import { LyricsApiResponse, LyricsSearch } from "./lyrics.schema"
 import { LyricsMapper } from "./lyrics.mapper"
 
 export class LyricsService {
-  private static readonly API_BASE_URL = "https://test-0k.onrender.com/lyrics"
+  private static readonly API_BASE_URL = process.env.LYRICS_API_URL || "https://test-0k.onrender.com/lyrics"
 
   static async fetchLyrics(search: LyricsSearch): Promise<{ lyrics: string[], originalLyrics: string }> {
     try {

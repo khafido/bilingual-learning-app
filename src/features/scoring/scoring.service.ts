@@ -6,9 +6,11 @@ export class ScoringService {
     try {
       this.validateInput(input)
       
+      // If not in cache, evaluate and cache the result
       const result = await GeminiProvider.evaluateTranslation(input)
+      const enhancedResult = this.enhanceResult(result)
       
-      return this.enhanceResult(result)
+      return enhancedResult
     } catch (error) {
       if (error instanceof Error) {
         throw new ScoringError(error.message)
@@ -26,12 +28,12 @@ export class ScoringService {
       throw new Error("Target language is required")
     }
     
-    if (!input.originalLyric.trim()) {
-      throw new Error("Original lyric is required")
+    if (!input.originalLyrics.trim()) {
+      throw new Error("Original lyrics are required")
     }
     
-    if (!input.userTranslation.trim()) {
-      throw new Error("User translation is required")
+    if (!input.userTranslations.trim()) {
+      throw new Error("User translations are required")
     }
     
     if (input.sourceLanguage === input.targetLanguage) {
@@ -49,7 +51,7 @@ export class ScoringService {
         ? result.areas_to_improve.filter(area => typeof area === 'string' && area.trim() !== "")
         : [],
       encouragement: (typeof result.encouragement === 'string' ? result.encouragement.trim() : "") || "Keep practicing! Translation skills improve with experience.",
-      better_translation: (typeof result.better_translation === 'string' ? result.better_translation.trim() : "") || "",
+      better_translation: (typeof result.better_translation === 'string' ? result.better_translation : "") || "",
     }
   }
 

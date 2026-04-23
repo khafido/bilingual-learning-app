@@ -51,10 +51,15 @@ export function TranslationInterface() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [currentLyricIndex, setCurrentLyricIndex] = useState(0)
+  const [manualLyricsText, setManualLyricsText] = useState<string>("")
+
+  console.log({ originalLyrics });
 
   const searchForm = useForm<SearchFormData>({
     resolver: zodResolver(searchSchema),
     defaultValues: {
+      artist: localStorageGet("lastArtist", ""),
+      song: localStorageGet("lastSong", ""),
       sourceLanguage: localStorageGet("sourceLanguage", "en"),
       targetLanguage: localStorageGet("targetLanguage", "id"),
     },
@@ -64,9 +69,11 @@ export function TranslationInterface() {
 
   useEffect(() => {
     const values = searchForm.getValues()
+    localStorageSet("artist", values.artist)
+    localStorageSet("song", values.song)
     localStorageSet("sourceLanguage", values.sourceLanguage)
     localStorageSet("targetLanguage", values.targetLanguage)
-  }, [searchForm.watch("sourceLanguage"), searchForm.watch("targetLanguage")])
+  }, [searchForm.watch("artist"), searchForm.watch("song"), searchForm.watch("sourceLanguage"), searchForm.watch("targetLanguage")])
 
   const handleSearchLyrics = async (data: SearchFormData) => {
     setLoading(true)
@@ -78,11 +85,16 @@ export function TranslationInterface() {
         song: data.song,
       })
       
+      // Save successful search to localStorage
+      localStorageSet("lastArtist", data.artist)
+      localStorageSet("lastSong", data.song)
+      
       console.log(fetchedLyrics)
       setLyrics(fetchedLyrics.lyrics)
       setOriginalLyrics(fetchedLyrics.originalLyrics)
+      setManualLyricsText(fetchedLyrics.originalLyrics)
       setTranslations(new Array(fetchedLyrics.lyrics.length).fill(""))
-      setStep("lyrics")
+      // setStep("lyrics")
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch lyrics")
     } finally {
@@ -90,16 +102,47 @@ export function TranslationInterface() {
     }
   }
 
-  const handleManualLyrics = (lyricsText: string) => {
+  const handleManualLyrics = () => {
+    setLoading(true)
+    setError(null)
+    
     try {
-      const processedLyrics = LyricsService.processManualLyrics(lyricsText)
-      const originalFormatted = LyricsMapper.preserveOriginalFormatting(lyricsText)
+      const formValues = searchForm.getValues()
+      
+      // Validate artist and song
+      if (!formValues.artist.trim()) {
+        setError("Artist name is required for manual lyrics")
+        setLoading(false)
+        return
+      }
+      
+      if (!formValues.song.trim()) {
+        setError("Song title is required for manual lyrics")
+        setLoading(false)
+        return
+      }
+      
+      if (!manualLyricsText.trim()) {
+        setError("Lyrics text is required")
+        setLoading(false)
+        return
+      }
+      
+      const processedLyrics = LyricsService.processManualLyrics(manualLyricsText)
+      const originalFormatted = LyricsMapper.preserveOriginalFormatting(manualLyricsText)
+      
+      // Save successful manual entry
+      localStorageSet("lastArtist", formValues.artist)
+      localStorageSet("lastSong", formValues.song)
+      
       setLyrics(processedLyrics)
       setOriginalLyrics(originalFormatted)
       setTranslations(new Array(processedLyrics.length).fill(""))
       setStep("lyrics")
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to process lyrics")
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -111,35 +154,29 @@ export function TranslationInterface() {
       const sourceLanguage = searchForm.getValues("sourceLanguage")
       const targetLanguage = searchForm.getValues("targetLanguage")
       
-      const results: ScoringResult[] = []
+      const result: ScoringResult = await ScoringService.evaluateTranslation({
+        artist: searchForm.getValues("artist"),
+        title: searchForm.getValues("song"),
+        sourceLanguage,
+        targetLanguage,
+        originalLyrics: lyrics.join("\n"),
+        userTranslations: data.translations.join("\n"),
+      })
       
-      for (let i = 0; i < lyrics.length; i++) {
-        if (data.translations[i].trim()) {
-          const result = await ScoringService.evaluateTranslation({
-            sourceLanguage: languages.find(l => l.code === sourceLanguage)?.name || sourceLanguage,
-            targetLanguage: languages.find(l => l.code === targetLanguage)?.name || targetLanguage,
-            originalLyric: lyrics[i],
-            userTranslation: data.translations[i],
-          })
-          results.push(result)
-        }
+      // Use the single result directly since we're evaluating all lyrics at once
+      const overallResult: ScoringResult = {
+        accuracy_score: result.accuracy_score,
+        grammar_score: result.grammar_score,
+        naturalness_score: result.naturalness_score,
+        overall_score: result.overall_score,
+        mistakes: result.mistakes,
+        areas_to_improve: result.areas_to_improve,
+        better_translation: result.better_translation,
+        encouragement: result.encouragement,
       }
-      
-      if (results.length > 0) {
-        const overallResult: ScoringResult = {
-          accuracy_score: Math.round(results.reduce((sum, r) => sum + r.accuracy_score, 0) / results.length),
-          grammar_score: Math.round(results.reduce((sum, r) => sum + r.grammar_score, 0) / results.length),
-          naturalness_score: Math.round(results.reduce((sum, r) => sum + r.naturalness_score, 0) / results.length),
-          overall_score: Math.round(results.reduce((sum, r) => sum + r.overall_score, 0) / results.length),
-          mistakes: results.flatMap(r => r.mistakes),
-          areas_to_improve: results.flatMap(r => r.areas_to_improve),
-          better_translation: results.map(r => r.better_translation).filter(Boolean).join("\n\n"),
-          encouragement: results[results.length - 1]?.encouragement || "Great job practicing!",
-        }
         
-        setScoringResult(overallResult)
-        setStep("results")
-      }
+      setScoringResult(overallResult)
+      setStep("results")
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to evaluate translations")
     } finally {
@@ -154,6 +191,27 @@ export function TranslationInterface() {
     translationForm.setValue(`translations.${index}`, value)
   }
 
+  const handleRestoreSaved = (saved: any) => {
+    // Restore form data
+    searchForm.setValue("artist", saved.artist)
+    searchForm.setValue("song", saved.song)
+    searchForm.setValue("sourceLanguage", saved.sourceLanguage)
+    searchForm.setValue("targetLanguage", saved.targetLanguage)
+    
+    // Restore translation data
+    setLyrics(saved.originalLyrics)
+    setOriginalLyrics(saved.originalLyrics.join('\n'))
+    setTranslations(saved.translations)
+    setScoringResult(saved.result)
+    setStep("results")
+    
+    // Save to localStorage
+    localStorageSet("lastArtist", saved.artist)
+    localStorageSet("lastSong", saved.song)
+    localStorageSet("sourceLanguage", saved.sourceLanguage)
+    localStorageSet("targetLanguage", saved.targetLanguage)
+  }
+
   const resetToSetup = () => {
     setStep("setup")
     setLyrics([])
@@ -161,6 +219,7 @@ export function TranslationInterface() {
     setTranslations([])
     setScoringResult(null)
     setError(null)
+    setManualLyricsText("")
     searchForm.reset()
     translationForm.reset()
   }
@@ -206,16 +265,18 @@ export function TranslationInterface() {
               </div>
 
               <div className="space-y-4">
-                <h3 className="font-medium">Search for Lyrics</h3>
+                <h3 className="font-medium">Search for Lyrics (Required)</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Input placeholder="Artist name" {...searchForm.register("artist")} />
+                    <label className="block text-sm font-medium mb-2">Artist Name *</label>
+                    <Input placeholder="e.g., The Beatles" {...searchForm.register("artist")} />
                     {searchForm.formState.errors.artist && (
                       <p className="text-sm text-red-600 mt-1">{searchForm.formState.errors.artist.message}</p>
                     )}
                   </div>
                   <div>
-                    <Input placeholder="Song title" {...searchForm.register("song")} />
+                    <label className="block text-sm font-medium mb-2">Song Title *</label>
+                    <Input placeholder="e.g., Hey Jude" {...searchForm.register("song")} />
                     {searchForm.formState.errors.song && (
                       <p className="text-sm text-red-600 mt-1">{searchForm.formState.errors.song.message}</p>
                     )}
@@ -227,22 +288,33 @@ export function TranslationInterface() {
                 </Button>
               </div>
 
-              <div className="relative">
+              {/* <div className="relative">
                 <div className="absolute inset-0 flex items-center">
                   <span className="w-full border-t" />
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-background px-2 text-muted-foreground">Or</span>
+                  <span className="bg-background px-2 text-muted-foreground">Alternative Option</span>
                 </div>
-              </div>
+              </div> */}
 
               <div className="space-y-4">
-                <h3 className="font-medium">Paste Lyrics Manually</h3>
+                {/* <h3 className="font-medium text-gray-600">Paste Lyrics Manually</h3> */}
+                <p className="text-sm text-gray-500">If you can't find the lyrics through search, you can paste them here</p>
                 <Textarea 
                   placeholder="Paste your lyrics here (one line per verse)"
                   className="min-h-[120px]"
-                  onChange={(e) => handleManualLyrics(e.target.value)}
+                  value={manualLyricsText}
+                  onChange={(e) => setManualLyricsText(e.target.value)}
                 />
+                <Button 
+                  type="button" 
+                  onClick={handleManualLyrics}
+                  disabled={loading}
+                  className="w-full"
+                >
+                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Submit Lyrics
+                </Button>
               </div>
             </form>
           </CardContent>
@@ -415,7 +487,7 @@ export function TranslationInterface() {
             {scoringResult.better_translation && (
               <div>
                 <h4 className="font-medium mb-2">Alternative Translations:</h4>
-                <div className="bg-gray-50 p-3 rounded text-sm">
+                <div className="bg-gray-50 p-3 rounded text-sm whitespace-pre-line">
                   {scoringResult.better_translation}
                 </div>
               </div>

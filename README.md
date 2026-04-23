@@ -53,9 +53,10 @@ src/
    ```bash
    cp .env.local.example .env.local
    ```
-   Add your Gemini API key to `.env.local`:
+   Add your Gemini API key and model configuration to `.env.local`:
    ```
    NEXT_PUBLIC_GEMINI_API_KEY=your_gemini_api_key_here
+   NEXT_PUBLIC_GEMINI_MODEL=gemini-1.5-flash
    ```
 
 3. **Run Development Server**
@@ -79,6 +80,27 @@ src/
 The app integrates with:
 - **Lyrics API**: `https://test-0k.onrender.com/lyrics/` for fetching song lyrics
 - **Google Gemini API**: For translation evaluation and scoring (free tier available)
+
+## AI Model Configuration
+
+The app supports multiple Gemini AI models via environment variables:
+
+**Available Models:**
+- `gemini-1.5-flash` - Fast and cost-effective (recommended)
+- `gemini-1.5-pro` - Higher quality, slower
+- `gemini-2.5-flash` - Latest flash model
+- `gemma-3-27b-it` - Gemma model
+
+**Configuration:**
+```bash
+# In .env.local
+NEXT_PUBLIC_GEMINI_MODEL=gemini-1.5-flash
+```
+
+**Recommendations:**
+- Use `gemini-1.5-flash` for development and speed
+- Use `gemini-1.5-pro` for higher accuracy needs
+- The app will fallback to `gemini-1.5-flash` if invalid model is specified
 
 ## Scoring System
 
