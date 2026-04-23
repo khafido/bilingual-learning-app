@@ -15,6 +15,9 @@ import { LyricsService } from "@/features/lyrics/lyrics.service"
 import { LyricsMapper } from "@/features/lyrics/lyrics.mapper"
 import { ScoringService } from "@/features/scoring/scoring.service"
 import { TranslationInput, ScoringResult } from "@/features/scoring/scoring.types"
+import { CacheService } from "@/features/cache/cache.service"
+import { CacheEntry } from "@/features/cache/cache.types"
+import { TranslationHistory } from "@/components/translation-history"
 import { localStorageGet, localStorageSet } from "@/lib/utils"
 
 const languages = [
@@ -43,7 +46,7 @@ type SearchFormData = z.infer<typeof searchSchema>
 type TranslationFormData = z.infer<typeof translationSchema>
 
 export function TranslationInterface() {
-  const [step, setStep] = useState<"setup" | "lyrics" | "translation" | "results">("setup")
+  const [step, setStep] = useState<"setup" | "lyrics" | "translation" | "results" | "history">("setup")
   const [lyrics, setLyrics] = useState<string[]>([])
   const [originalLyrics, setOriginalLyrics] = useState<string>("")
   const [translations, setTranslations] = useState<string[]>([])
@@ -52,6 +55,7 @@ export function TranslationInterface() {
   const [error, setError] = useState<string | null>(null)
   const [currentLyricIndex, setCurrentLyricIndex] = useState(0)
   const [manualLyricsText, setManualLyricsText] = useState<string>("")
+  const [showHistory, setShowHistory] = useState(false)
 
   console.log({ originalLyrics });
 
@@ -151,17 +155,62 @@ export function TranslationInterface() {
     setError(null)
     
     try {
+      const artist = searchForm.getValues("artist")
+      const title = searchForm.getValues("song")
       const sourceLanguage = searchForm.getValues("sourceLanguage")
       const targetLanguage = searchForm.getValues("targetLanguage")
       
-      const result: ScoringResult = await ScoringService.evaluateTranslation({
-        artist: searchForm.getValues("artist"),
-        title: searchForm.getValues("song"),
+      // Check cache first
+      const cacheKey = {
+        artist,
+        title,
         sourceLanguage,
-        targetLanguage,
-        originalLyrics: lyrics.join("\n"),
-        userTranslations: data.translations.join("\n"),
-      })
+        targetLanguage
+      }
+      
+      // Check if user translations are different from cached ones
+      const translationsMatch = CacheService.compareUserTranslations(cacheKey, data.translations)
+      
+      let result: ScoringResult
+      
+      if (translationsMatch) {
+        // Use cached result if translations are the same
+        const cachedEntry = CacheService.getCachedTranslation(cacheKey)
+        if (cachedEntry) {
+          result = cachedEntry.scoringResult
+        } else {
+          // Fallback to API if cache somehow doesn't exist
+          result = await ScoringService.evaluateTranslation({
+            artist,
+            title,
+            sourceLanguage,
+            targetLanguage,
+            originalLyrics: lyrics.join("\n"),
+            userTranslations: data.translations.join("\n"),
+          })
+        }
+      } else {
+        // Get new result from API if translations are different
+        result = await ScoringService.evaluateTranslation({
+          artist,
+          title,
+          sourceLanguage,
+          targetLanguage,
+          originalLyrics: lyrics.join("\n"),
+          userTranslations: data.translations.join("\n"),
+        })
+        
+        // Cache the new translation
+        CacheService.cacheTranslation({
+          artist,
+          title,
+          sourceLanguage,
+          targetLanguage,
+          originalLyrics: lyrics,
+          userTranslations: data.translations,
+          scoringResult: result
+        })
+      }
       
       // Use the single result directly since we're evaluating all lyrics at once
       const overallResult: ScoringResult = {
@@ -191,23 +240,23 @@ export function TranslationInterface() {
     translationForm.setValue(`translations.${index}`, value)
   }
 
-  const handleRestoreSaved = (saved: any) => {
+  const handleRestoreSaved = (saved: CacheEntry) => {
     // Restore form data
     searchForm.setValue("artist", saved.artist)
-    searchForm.setValue("song", saved.song)
+    searchForm.setValue("song", saved.title)
     searchForm.setValue("sourceLanguage", saved.sourceLanguage)
     searchForm.setValue("targetLanguage", saved.targetLanguage)
     
     // Restore translation data
     setLyrics(saved.originalLyrics)
     setOriginalLyrics(saved.originalLyrics.join('\n'))
-    setTranslations(saved.translations)
-    setScoringResult(saved.result)
+    setTranslations(saved.userTranslations)
+    setScoringResult(saved.scoringResult)
     setStep("results")
     
     // Save to localStorage
     localStorageSet("lastArtist", saved.artist)
-    localStorageSet("lastSong", saved.song)
+    localStorageSet("lastSong", saved.title)
     localStorageSet("sourceLanguage", saved.sourceLanguage)
     localStorageSet("targetLanguage", saved.targetLanguage)
   }
@@ -229,10 +278,15 @@ export function TranslationInterface() {
       <div className="max-w-2xl mx-auto space-y-6">
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Music className="h-5 w-5" />
-              Language Setup
-            </CardTitle>
+            <div className="flex justify-between items-center">
+              <CardTitle className="flex items-center gap-2">
+                <Music className="h-5 w-5" />
+                Language Setup
+              </CardTitle>
+              <Button variant="outline" onClick={() => setStep("history")}>
+                View History
+              </Button>
+            </div>
             <CardDescription>
               Choose your languages and find lyrics to translate
             </CardDescription>
@@ -400,6 +454,9 @@ export function TranslationInterface() {
                 <Button variant="outline" onClick={() => setStep("lyrics")}>
                   Back to Lyrics
                 </Button>
+                <Button variant="outline" onClick={resetToSetup}>
+                  Back to Home
+                </Button>
               </div>
             </form>
           </CardContent>
@@ -505,9 +562,26 @@ export function TranslationInterface() {
               <Button variant="outline" onClick={() => setStep("translation")}>
                 Review Translations
               </Button>
+              <Button variant="outline" onClick={() => setStep("history")}>
+                View History
+              </Button>
             </div>
           </CardContent>
         </Card>
+      </div>
+    )
+  }
+
+  if (step === "history") {
+    return (
+      <div className="max-w-4xl mx-auto space-y-6">
+        <div className="flex justify-between items-center">
+          <h2 className="text-2xl font-bold">Translation History</h2>
+          <Button variant="outline" onClick={() => setStep("setup")}>
+            Back to Setup
+          </Button>
+        </div>
+        <TranslationHistory onRestore={handleRestoreSaved} />
       </div>
     )
   }
