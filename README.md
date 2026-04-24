@@ -19,7 +19,7 @@ A production-ready Next.js application for evaluating song lyric translations us
 - **Styling**: Tailwind CSS with Shadcn UI
 - **Forms**: React Hook Form with Zod validation
 - **Icons**: Lucide React
-- **AI**: OpenAI API integration
+- **AI**: Gemini API integration
 
 ## Architecture
 
@@ -102,10 +102,10 @@ NEXT_PUBLIC_GEMINI_MODEL=gemini-1.5-flash
 - Use `gemini-1.5-pro` for higher accuracy needs
 - The app will fallback to `gemini-1.5-flash` if invalid model is specified
 
-## Scoring System
+## Scoring System (configurable)
 
-- **Accuracy Score** (60% weight): Meaning preservation
-- **Grammar Score** (20% weight): Grammar correctness
+- **Accuracy Score** (40% weight): Meaning preservation
+- **Grammar Score** (40% weight): Grammar correctness
 - **Naturalness Score** (20% weight): Fluency and native-like expression
 - **Overall Score**: Weighted combination of all scores
 
@@ -129,3 +129,5 @@ npm start
 ## License
 
 MIT License
+
+DEMO: https://bilingual-learning.netlify.app/
